@@ -5,7 +5,6 @@ output:
     keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
 
 1. Load the data (i.e. read.csv())
@@ -27,9 +26,9 @@ data$interval <- as.factor(data$interval)
 1. Make a histogram of the total number of steps taken each day
 
 ```{r echo=TRUE}
-daily_steps <- aggregate(data$steps~data$date, FUN=mean)
-names(daily_steps) <- c("interval", "steps")
-hist(daily_steps$steps)
+daily_steps <- aggregate(data$steps~data$date, FUN=sum)
+names(daily_steps) <- c("date", "steps")
+hist(daily_steps$steps, xlab = "Total number of steps by date")
 ```
 
 2. Calculate and report the mean and median total number of steps taken
@@ -54,7 +53,7 @@ plot(interval_steps, type = "l", xlab = "5-Minute interval identifier", ylab = "
 contains the maximum number of steps?
 
 ```{r echo=TRUE}
-interval_steps[interval_steps$`data$steps`==max(interval_steps$`data$steps`),]
+interval_steps[interval_steps$steps==max(interval_steps$steps),]
 ```
 
 ## Imputing missing values
@@ -68,19 +67,23 @@ sum(is.na(data))
 strategy does not need to be sophisticated. For example, you could use
 the mean/median for that day, or the mean for that 5-minute interval, etc.
 ```{r echo=TRUE}
+## Here a simple_impute function is created that takes a set that needs to be imputed and a set with averages per 5-minute interval that are used to imput the NAs in the former.
 simple_impute <- function(to_impute, averages) {
    size <- nrow(to_impute)
    changed <- 0
-   for (i in 1:size){
-      ##print(paste("cheking row ", i, " of ", size))
-      if(is.na(to_impute[i,]$steps)){
-         ##print(paste("NA? ", is.na(to_impute[i,]$steps)))
-         ## look up the average value for that 5-minute time interval across all days
+   ## for each record in the set to be imputed
+   
+   for (i in 1:size){ ##print(paste("Cheking row ", i, " of ", size))
+      
+      if(is.na(to_impute[i,]$steps)){##print(paste("NA? ", is.na(to_impute[i,]$steps)))
+         
+         ## Change NA with average value for corresponding 5-minute time interval across all days
          to_impute[i,]$steps <- averages[averages$interval==to_impute[i,]$interval,]$steps
          changed <- changed + 1
       }
    }
    print(paste("NAs imputed: ", changed))
+   ## Returned iputed set
    to_impute
 }
 ```
@@ -92,26 +95,50 @@ imputed <- data.frame(data)
 imputed <- simple_impute(imputed, interval_steps)
 ```
 
-4. Make a histogram of the total number of steps taken each day and Calculate
+4. a. Make a histogram of the total number of steps taken each day and Calculate
 and report the mean and median total number of steps taken per day. 
 
 ```{r echo=TRUE}
 imputed_daily <- aggregate(imputed$steps~imputed$date, FUN=mean)
-names(imputed_daily) <- c("interval", "steps")
-hist(imputed_daily$steps)
+names(imputed_daily) <- c("date", "steps")
+hist(imputed_daily$steps, xlab = "Mean of daily steps")
 summary(imputed_daily$steps)
 ```
 
-Do these values differ from the estimates from the first part of the assignment?
+b. Do these values differ from the estimates from the first part of the assignment?
 ```{r echo=TRUE}
 summary(daily_steps$steps)
 ```
+Yes, there are slight differences. After imputation the median is slightly higher, the first quartile is a bit higher and the third quartile a bit lower.
 
-
-What is the impact of imputing missing data on the estimates of the total
+c. What is the impact of imputing missing data on the estimates of the total
 daily number of steps?
+The distribution changes slightly towards lower values.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+1. Create a new factor variable in the dataset with two levels – “weekday”
+and “weekend” indicating whether a given date is a weekday or weekend
+day.
 ```{r echo=TRUE}
+library(chron)
+imputed$daytype <- ifelse(is.weekend(imputed$date), "weekend", "weekday")
+imputed$daytype <- as.factor(imputed$daytype)
+```
 
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the
+5-minute interval (x-axis) and the average number of steps taken, averaged
+across all weekday days or weekend days (y-axis)
+```{r echo=TRUE}
+daytype_steps <- aggregate(steps~interval+daytype, data = imputed, FUN=mean)
+names(daytype_steps) <- c("interval", "daytype", "steps")
+daytype_steps$interval <- factor(daytype_steps$interval)
+library(lattice)
+## The following plotting code creates a perfect plot in R Studio, but knitr does not output the x axis correctly so I plot to a png to demonstrate
+png(filename="correct_daytype_steps_plot.png")
+xyplot(steps~interval|daytype, daytype_steps, type = "l", layout = c(1,2), ylab = "Average steps by day", scales=list(y=list(at= seq(0, 250, 25), limits=c(0,250)),x=list(at= seq(0, 2400, 200), limits=c(0,2400))))
+dev.off()
+## Calling this through knitr still gives errors, but in R Studio works perfectly.
+
+## The best I can get out of knitr, but with x axis missing (when I leave out x list completely it gets an 'overcrowded' x axis)
+xyplot(steps~interval|daytype, daytype_steps, type = "l", layout = c(1,2), ylab = "Average steps by day", scales=list(y=list(at= seq(0, 250, 25), limits=c(0,250)),x=list(at= seq(0, 2400, 200))))
 ```
