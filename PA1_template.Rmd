@@ -1,8 +1,8 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
 output: 
-  html_document:
-    keep_md: true
+html_document:
+keep_md: true
 ---
 
 ## Loading and preprocessing the data
@@ -27,8 +27,8 @@ data$interval <- as.factor(data$interval)
 
 ```{r echo=TRUE}
 daily_steps <- aggregate(data$steps~data$date, FUN=sum)
-names(daily_steps) <- c("date", "steps")
-hist(daily_steps$steps, xlab = "Total number of steps by date")
+names(daily_steps) <- c("date", "steps.sum")
+hist(daily_steps$steps.sum, xlab = "Total number of steps by date")
 ```
 
 2. Calculate and report the mean and median total number of steps taken
@@ -45,7 +45,7 @@ and the average number of steps taken, averaged across all days (y-axis)
 
 ```{r echo=TRUE}
 interval_steps <- aggregate(data$steps~data$interval, FUN=mean)
-names(interval_steps) <- c("interval", "steps")
+names(interval_steps) <- c("interval", "steps.mean")
 plot(interval_steps, type = "l", xlab = "5-Minute interval identifier", ylab = "Average steps across all days")
 ```
 
@@ -53,7 +53,7 @@ plot(interval_steps, type = "l", xlab = "5-Minute interval identifier", ylab = "
 contains the maximum number of steps?
 
 ```{r echo=TRUE}
-interval_steps[interval_steps$steps==max(interval_steps$steps),]
+interval_steps[interval_steps$steps.mean==max(interval_steps$steps.mean),]
 ```
 
 ## Imputing missing values
@@ -67,7 +67,7 @@ sum(is.na(data))
 strategy does not need to be sophisticated. For example, you could use
 the mean/median for that day, or the mean for that 5-minute interval, etc.
 ```{r echo=TRUE}
-## Here a simple_impute function is created that takes a set that needs to be imputed and a set with averages per 5-minute interval that are used to imput the NAs in the former.
+## A simple_impute function is created that takes a set that needs to be imputed and a set with averages per 5-minute interval that are used to impute the NAs in the former.
 simple_impute <- function(to_impute, averages) {
    size <- nrow(to_impute)
    changed <- 0
@@ -75,7 +75,7 @@ simple_impute <- function(to_impute, averages) {
    
    for (i in 1:size){ ##print(paste("Cheking row ", i, " of ", size))
       
-      if(is.na(to_impute[i,]$steps)){##print(paste("NA? ", is.na(to_impute[i,]$steps)))
+      if(is.na(to_impute[i,]$steps)){ ##print(paste("NA? ", is.na(to_impute[i,]$steps)))
          
          ## Change NA with average value for corresponding 5-minute time interval across all days
          to_impute[i,]$steps <- averages[averages$interval==to_impute[i,]$interval,]$steps
@@ -99,9 +99,9 @@ imputed <- simple_impute(imputed, interval_steps)
 and report the mean and median total number of steps taken per day. 
 
 ```{r echo=TRUE}
-imputed_daily <- aggregate(imputed$steps~imputed$date, FUN=mean)
-names(imputed_daily) <- c("date", "steps")
-hist(imputed_daily$steps, xlab = "Mean of daily steps")
+imputed_daily <- aggregate(imputed$steps~imputed$date, FUN=sum)
+names(imputed_daily) <- c("date", "steps.sum")
+hist(imputed_daily$steps, xlab = "Total number of steps by date")
 summary(imputed_daily$steps)
 ```
 
@@ -113,6 +113,7 @@ Yes, there are slight differences. After imputation the median is slightly highe
 
 c. What is the impact of imputing missing data on the estimates of the total
 daily number of steps?
+
 The distribution changes slightly towards lower values.
 
 ## Are there differences in activity patterns between weekdays and weekends?
@@ -131,9 +132,10 @@ across all weekday days or weekend days (y-axis)
 ```{r echo=TRUE}
 daytype_steps <- aggregate(steps~interval+daytype, data = imputed, FUN=mean)
 names(daytype_steps) <- c("interval", "daytype", "steps")
-daytype_steps$interval <- factor(daytype_steps$interval)
-library(lattice)
+daytype_steps$interval <- as.numeric(levels(daytype_steps$interval))
+
 ## The following plotting code creates a perfect plot in R Studio, but knitr does not output the x axis correctly so I plot to a png to demonstrate
+library(lattice)
 png(filename="correct_daytype_steps_plot.png")
 xyplot(steps~interval|daytype, daytype_steps, type = "l", layout = c(1,2), ylab = "Average steps by day", scales=list(y=list(at= seq(0, 250, 25), limits=c(0,250)),x=list(at= seq(0, 2400, 200), limits=c(0,2400))))
 dev.off()
